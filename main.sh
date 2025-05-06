@@ -144,6 +144,14 @@ setup_trojan(){
   TROJAN_DIR="trojan"
   mkdir -p $TROJAN_DIR
   
+  # 检查并安装必要的工具
+  echo -e "${YELLOW}Checking for required tools...${NC}"
+  if ! command -v unzip &> /dev/null; then
+    echo -e "${YELLOW}Installing unzip...${NC}"
+    sudo apt update
+    sudo apt install -y unzip
+  fi
+  
   # 下载 Trojan-Go
   echo -e "${YELLOW}Downloading Trojan-Go...${NC}"
   if [ "$(uname)" == "Darwin" ]; then
@@ -156,17 +164,46 @@ setup_trojan(){
     sudo curl -L https://github.com/p4gefau1t/trojan-go/releases/download/v0.10.6/trojan-go-linux-amd64.zip -o trojan-go.zip
   fi
   
+  # 检查下载是否成功
+  if [ ! -f "trojan-go.zip" ]; then
+    echo -e "${RED}Failed to download Trojan-Go. Please check your internet connection.${NC}"
+    return 1
+  fi
+  
   # 解压文件到trojan目录
   echo -e "${YELLOW}Extracting Trojan-Go...${NC}"
   sudo unzip -o trojan-go.zip -d $TROJAN_DIR
   
+  # 检查解压是否成功
+  if [ ! -f "$TROJAN_DIR/trojan-go" ]; then
+    echo -e "${RED}Failed to extract Trojan-Go. The archive may be corrupted.${NC}"
+    return 1
+  fi
+  
   # 复制配置文件
-  echo -e "${YELLOW}Copying configuration file...${NC}"
+  echo -e "${YELLOW}Creating configuration file...${NC}"
   if [ -f "server.json" ]; then
     sudo cp server.json $TROJAN_DIR/
     echo -e "${GREEN}Configuration file copied successfully.${NC}"
   else
-    echo -e "${YELLOW}server.json not found. Please create it manually in $TROJAN_DIR directory.${NC}"
+    echo -e "${YELLOW}server.json not found. Creating a default configuration...${NC}"
+    cat > $TROJAN_DIR/server.json << 'EOF'
+{
+  "run_type": "server",
+  "local_addr": "0.0.0.0",
+  "local_port": 443,
+  "remote_addr": "127.0.0.1",
+  "remote_port": 80,
+  "password": [
+    "your_password_here"
+  ],
+  "ssl": {
+    "cert": "server.crt",
+    "key": "server.key"
+  }
+}
+EOF
+    echo -e "${GREEN}Default configuration created. Please edit $TROJAN_DIR/server.json to set your password and SSL certificates.${NC}"
   fi
   
   # 设置权限
@@ -177,6 +214,7 @@ setup_trojan(){
   
   echo -e "${GREEN}Trojan-Go has been set up in $TROJAN_DIR directory.${NC}"
   echo -e "${YELLOW}To start Trojan-Go, run: cd $TROJAN_DIR && ./trojan-go -config server.json${NC}"
+  echo -e "${YELLOW}Note: Before running Trojan-Go, make sure to configure your SSL certificates in server.json.${NC}"
 }
 
 # Main function
