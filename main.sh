@@ -20,6 +20,7 @@ show_help() {
     echo "Options:"
     echo "  -f, --firewall        Configure and enable firewall"
     echo "  -d, --docker          Install Docker and Docker Compose"
+    echo "  -n, --nginx           Setup Nginx with Docker"
     echo "  -a, --all             Install and configure everything (firewall and Docker)"
     echo "  -h, --help            Show this help message"
 }
@@ -107,12 +108,75 @@ setup_docker() {
     echo -e "${GREEN}Docker installation completed successfully.${NC}"
 }
 
-# Function to set up everything
-setup_all() {
-    setup_firewall
-    setup_docker
+# Function to setup Nginx with Docker
+setup_nginx() {
+    echo -e "${BLUE}Setting up Nginx with Docker...${NC}"
     
-    echo -e "${GREEN}All components have been set up successfully.${NC}"
+    # Check if Docker is installed
+    if ! command -v docker &> /dev/null; then
+        echo -e "${YELLOW}Docker is not installed. Installing Docker first...${NC}"
+        setup_docker
+    fi
+    
+    # Pull Nginx image
+    echo -e "${YELLOW}Pulling Nginx Docker image...${NC}"
+    docker pull nginx
+    
+    # Run Nginx container
+    echo -e "${YELLOW}Running Nginx container...${NC}"
+    docker run --name nginx-container -d -p 80:80 nginx
+    
+    # Check if Nginx container is running
+    if docker ps | grep -q nginx-container; then
+        echo -e "${GREEN}Nginx is now running. You can access it at http://localhost${NC}"
+    else
+        echo -e "${RED}Failed to start Nginx container. Please check Docker logs.${NC}"
+        docker logs nginx-container
+    fi
+    
+    echo -e "${GREEN}Nginx setup completed.${NC}"
+}
+
+setup_trojan(){
+  echo -e "${BLUE}Setting up Trojan-Go...${NC}"
+  
+  # 创建目标目录
+  TROJAN_DIR="trojan"
+  mkdir -p $TROJAN_DIR
+  
+  # 下载 Trojan-Go
+  echo -e "${YELLOW}Downloading Trojan-Go...${NC}"
+  if [ "$(uname)" == "Darwin" ]; then
+    # macOS
+    sudo wget -q https://github.com/p4gefau1t/trojan-go/releases/download/v0.10.6/trojan-go-darwin-amd64.zip -O trojan-go.zip || \
+    sudo curl -L https://github.com/p4gefau1t/trojan-go/releases/download/v0.10.6/trojan-go-darwin-amd64.zip -o trojan-go.zip
+  else
+    # Linux
+    sudo wget -q https://github.com/p4gefau1t/trojan-go/releases/download/v0.10.6/trojan-go-linux-amd64.zip -O trojan-go.zip || \
+    sudo curl -L https://github.com/p4gefau1t/trojan-go/releases/download/v0.10.6/trojan-go-linux-amd64.zip -o trojan-go.zip
+  fi
+  
+  # 解压文件到trojan目录
+  echo -e "${YELLOW}Extracting Trojan-Go...${NC}"
+  sudo unzip -o trojan-go.zip -d $TROJAN_DIR
+  
+  # 复制配置文件
+  echo -e "${YELLOW}Copying configuration file...${NC}"
+  if [ -f "server.json" ]; then
+    sudo cp server.json $TROJAN_DIR/
+    echo -e "${GREEN}Configuration file copied successfully.${NC}"
+  else
+    echo -e "${YELLOW}server.json not found. Please create it manually in $TROJAN_DIR directory.${NC}"
+  fi
+  
+  # 设置权限
+  sudo chmod +x $TROJAN_DIR/trojan-go
+  
+  # 删除下载的zip文件
+  sudo rm -f trojan-go.zip
+  
+  echo -e "${GREEN}Trojan-Go has been set up in $TROJAN_DIR directory.${NC}"
+  echo -e "${YELLOW}To start Trojan-Go, run: cd $TROJAN_DIR && ./trojan-go -config server.json${NC}"
 }
 
 # Main function
@@ -129,8 +193,11 @@ main() {
         -d|--docker)
             setup_docker
             ;;
-        -a|--all)
-            setup_all
+        -n|--nginx)
+            setup_nginx
+            ;;
+        -t|--trojan)
+            setup_trojan
             ;;
         -h|--help)
             show_help
