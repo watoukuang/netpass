@@ -21,7 +21,7 @@ show_help() {
     echo "  -f, --firewall        Configure and enable firewall"
     echo "  -d, --docker          Install Docker and Docker Compose"
     echo "  -n, --nginx           Setup Nginx with Docker"
-    echo "  -a, --all             Install and configure everything (firewall and Docker)"
+    echo "  -a, --trojan          Install and configure Trojan"
     echo "  -h, --help            Show this help message"
 }
 
